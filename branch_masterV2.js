@@ -41,6 +41,7 @@ function logToFile(message) {
 // Function to process Excel data
 async function processExcelFile(filePath) {
   // const client = await pool.connect();
+  const operationLogs = []; // Array to store operation logs
   try {
     // await client.query('BEGIN'); // Start transaction
     // Read Excel file
@@ -51,7 +52,8 @@ async function processExcelFile(filePath) {
     // logToFile(rows[0]);
   
     for (const row of rows) {
-        logToFile(row["Branch ID"], row["State*"]);
+      
+        // logToFile(row["Branch ID"], row["State*"]);
         const {
             "S.No": serial_no,
             "Partner Bank ID": partner_bank_id,
@@ -114,7 +116,18 @@ async function processExcelFile(filePath) {
             "Spotways Lat": spotways_lat,
             "Spotways Long": spotways_lon,
           } = row;
+
     // Log the parsed data for debugging
+    const jsOpenDate = new Date((open_date - 25569) * 86400 * 1000);
+    // Set the time to 00:00:00 to remove the time part
+    jsOpenDate.setHours(0, 0, 0, 0);
+    // Convert to desired date format (e.g., MM/DD/YYYY)
+    const formattedOpenDate = jsOpenDate.toLocaleDateString('en-GB'); 
+
+    const jsCloseDate = new Date((close_date - 25569) * 86400 * 1000);
+    jsCloseDate.setHours(0, 0, 0, 0);
+    const formattedCloseDate = jsCloseDate.toLocaleDateString('en-GB'); 
+
     logToFile(`Processed Branch ID: ${branch_id}, State: ${state_1}`);
     logToFile(JSON.stringify({
       partner_bank_id,
@@ -138,11 +151,17 @@ async function processExcelFile(filePath) {
       email_id,
       mobile_no,
       language,
-      open_date,
-      close_date,
+      formattedOpenDate,
+      formattedCloseDate,
       latitude,
       longitude,
     }));
+
+    if (!branch_id) {
+        operationLogs.push({ branch_id: "N/A", operation: "Skipped (No Branch ID)" });
+        continue;
+    }
+
       if(branch_id == undefined){
         continue;
       }
@@ -215,8 +234,8 @@ async function processExcelFile(filePath) {
                 email_id,
                 mobile_no,
                 language,
-                open_date,
-                close_date,
+                formattedOpenDate,
+                formattedCloseDate,
                 latitude,
                 longitude,
                 branch_id,
@@ -224,8 +243,11 @@ async function processExcelFile(filePath) {
         );
         
           logToFile(`Updated branch_id: ${branch_id}`);
+          operationLogs.push({ branch_id, operation: "Updated" });
         } else {
           logToFile(`No changes for branch_id: ${branch_id}`);
+          operationLogs.push({ branch_id, operation: "No Changes" });
+
         }
       } else {
         // Get the current maximum serial number (s_no)
@@ -289,23 +311,40 @@ async function processExcelFile(filePath) {
               email_id,
               mobile_no,
               language,
-              open_date,
-              close_date,
+              formattedOpenDate,
+              formattedCloseDate,
               latitude,
               longitude
           ]
       );
-      
+      operationLogs.push({ branch_id, operation: "Inserted" });
         logToFile(`Inserted new branch_id: ${branch_id}`);
       }
     // await client.query('COMMIT'); // Commit transaction
     }
+    // Write operation logs to an Excel file
+    // writeLogsToExcel(operationLogs, "operation_logs.xlsx");
+    console.log("Processing complete. Logs written to operation_logs.xlsx.");
   } catch (error) {
     console.error("Error processing Excel file:", error);
   } finally {
     // Close the database connection
     await pool.end();
   }
+}
+
+
+// Function to write operation logs to an Excel file
+function writeLogsToExcel(logs, outputFilePath) {
+  // Convert logs array to worksheet
+  const worksheet = xlsx.utils.json_to_sheet(logs);
+
+  // Create a new workbook and append the worksheet
+  const workbook = xlsx.utils.book_new();
+  xlsx.utils.book_append_sheet(workbook, worksheet, "Logs");
+
+  // Write the workbook to the output file
+  xlsx.writeFile(workbook, outputFilePath);
 }
 
 // Path to your Excel file
