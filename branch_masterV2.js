@@ -38,6 +38,17 @@ function logToFile(message) {
   fs.appendFileSync(logFilePath, `[${timestamp}] ${message}\n`, 'utf8');
 }
 
+function formatCloseDate(close_date) {
+  if (close_date) {
+    const jsCloseDate = new Date((close_date - 25569) * 86400 * 1000);
+    jsCloseDate.setHours(0, 0, 0, 0);
+    return jsCloseDate.toLocaleDateString('en-GB'); // Format as 'DD/MM/YYYY'
+  } else {
+    console.warn('close_date is missing or invalid. Returning null.');
+    return null; // Or return '' if you prefer an empty string
+  }
+}
+
 // Function to process Excel data
 async function processExcelFile(filePath) {
   // const client = await pool.connect();
@@ -117,17 +128,10 @@ async function processExcelFile(filePath) {
             "Spotways Long": spotways_lon,
           } = row;
 
-    // Log the parsed data for debugging
-    const jsOpenDate = new Date((open_date - 25569) * 86400 * 1000);
-    // Set the time to 00:00:00 to remove the time part
-    jsOpenDate.setHours(0, 0, 0, 0);
-    // Convert to desired date format (e.g., MM/DD/YYYY)
-    const formattedOpenDate = jsOpenDate.toLocaleDateString('en-GB'); 
-
-    const jsCloseDate = new Date((close_date - 25569) * 86400 * 1000);
-    jsCloseDate.setHours(0, 0, 0, 0);
-    const formattedCloseDate = jsCloseDate.toLocaleDateString('en-GB'); 
-
+      
+    const formattedOpenDate = formatCloseDate(open_date);
+    const formattedCloseDate = formatCloseDate(close_date);
+    console.log(formattedCloseDate+" "+formattedOpenDate+'\n');
     logToFile(`Processed Branch ID: ${branch_id}, State: ${state_1}`);
     logToFile(JSON.stringify({
       partner_bank_id,
